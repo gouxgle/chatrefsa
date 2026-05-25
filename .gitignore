@@ -7,3 +7,5 @@ uploads/*
 *.log
 .DS_Store
 mysql_data/
+frontend (2)/
+*.zip
