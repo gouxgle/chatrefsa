@@ -1,0 +1,190 @@
+// This is your Prisma schema file
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Users ─────────────────────────────────────────
+model User {
+  id        String   @id @default(uuid())
+  email     String?  @unique
+  username  String   @unique
+  password  String
+  fullName  String?  @map("full_name")
+  avatar    String?
+  status    UserStatus @default(AVAILABLE)
+  customStatus String? @map("custom_status")
+  role      Role     @default(EMPLOYEE)
+  isBlocked Boolean  @default(false) @map("is_blocked")
+  isOnline  Boolean  @default(false) @map("is_online")
+  lastSeen  DateTime @default(now()) @map("last_seen")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  isVerified  Boolean  @default(false) @map("is_verified")
+  verificationToken String? @map("verification_token")
+  resetPasswordToken String? @map("reset_password_token")
+  resetPasswordExpires DateTime? @map("reset_password_expires")
+
+  // Relations
+  sentMessages     Message[]  @relation("SentMessages")
+  participants     ConversationParticipant[]
+  messageReads     MessageRead[]
+  uploadedFiles    File[]
+  systemLogs       SystemLog[]
+  createdConversations Conversation[] @relation("CreatedConversations")
+
+  @@map("users")
+}
+
+enum UserStatus {
+  AVAILABLE
+  BUSY
+  AWAY
+  DO_NOT_DISTURB
+  OFFLINE
+}
+
+enum Role {
+  ADMIN
+  EMPLOYEE
+}
+
+// ─── Conversations ─────────────────────────────────
+model Conversation {
+  id          String   @id @default(uuid())
+  isGroup     Boolean  @default(false) @map("is_group")
+  name        String?
+  description String?  @db.Text
+  avatar      String?
+  createdById String?  @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  createdBy    User?    @relation("CreatedConversations", fields: [createdById], references: [id], onDelete: SetNull)
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@map("conversations")
+}
+
+// ─── Conversation Participants ─────────────────────
+model ConversationParticipant {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  conversationId String   @map("conversation_id")
+  role           ParticipantRole @default(MEMBER)
+  joinedAt       DateTime @default(now()) @map("joined_at")
+
+  // Relations
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, conversationId])
+  @@map("conversation_participants")
+}
+
+enum ParticipantRole {
+  ADMIN
+  MODERATOR
+  MEMBER
+}
+
+// ─── Messages ──────────────────────────────────────
+model Message {
+  id             String      @id @default(uuid())
+  content        String?     @db.Text
+  type           MessageType @default(TEXT)
+  conversationId String      @map("conversation_id")
+  senderId       String      @map("sender_id")
+  replyToId      String?     @map("reply_to_id")
+  isEdited       Boolean     @default(false) @map("is_edited")
+  isDeleted      Boolean     @default(false) @map("is_deleted")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  replyTo      Message?     @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies      Message[]    @relation("MessageReplies")
+  reads        MessageRead[]
+  files        File[]
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+  VIDEO
+  AUDIO
+  SYSTEM
+}
+
+// ─── Message Read Receipts ─────────────────────────
+model MessageRead {
+  id        String   @id @default(uuid())
+  messageId String   @map("message_id")
+  userId    String   @map("user_id")
+  readAt    DateTime @default(now()) @map("read_at")
+
+  // Relations
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@map("message_reads")
+}
+
+// ─── Files ─────────────────────────────────────────
+model File {
+  id           String   @id @default(uuid())
+  filename     String
+  originalName String   @map("original_name")
+  mimetype     String
+  size         Int
+  path         String
+  messageId    String?  @map("message_id")
+  uploadedById String   @map("uploaded_by_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Relations
+  message    Message? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  uploadedBy User     @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+
+  @@map("files")
+}
+
+// ─── System Logs ───────────────────────────────────
+model SystemLog {
+  id        String   @id @default(uuid())
+  action    String
+  userId    String?  @map("user_id")
+  details   String?  @db.Text
+  ip        String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@map("system_logs")
+}
+
+// ─── System Config ─────────────────────────────────
+model SystemConfig {
+  id    String @id @default(uuid())
+  key   String @unique
+  value String @db.Text
+
+  @@map("system_config")
+}
