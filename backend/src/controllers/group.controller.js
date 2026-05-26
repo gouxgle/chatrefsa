@@ -97,12 +97,14 @@ const updateMemberRole = async (req, res) => {
 const deleteGroup = async (req, res) => {
   try {
     const { id } = req.params;
-    const group = await require('../config/database').conversation.findUnique({
+    const prisma = require('../config/database');
+    const group = await prisma.conversation.findUnique({
       where: { id },
       include: { participants: { select: { userId: true } } },
     });
 
-    await groupService.deleteGroup(id, req.user.id);
+    const isSystemAdmin = req.user.role === 'ADMIN';
+    await groupService.deleteGroup(id, req.user.id, isSystemAdmin);
 
     const io = req.app.get('io');
     if (io && group) {

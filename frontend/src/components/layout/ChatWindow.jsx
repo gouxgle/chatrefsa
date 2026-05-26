@@ -319,6 +319,8 @@ export default function ChatWindow({ conversation, onBack, onUpdate }) {
           conversation={conversation}
           messages={messages}
           onClose={() => setShowInfo(false)}
+          onLeft={() => { setShowInfo(false); onBack?.(); onUpdate?.(); }}
+          onDeleted={() => { setShowInfo(false); onBack?.(); onUpdate?.(); }}
         />
       )}
       {lightbox && (

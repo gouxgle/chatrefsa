@@ -158,13 +158,14 @@ class GroupService {
     return { success: true };
   }
 
-  async deleteGroup(groupId, userId) {
-    const participant = await prisma.conversationParticipant.findFirst({
-      where: { conversationId: groupId, userId, role: 'ADMIN' },
-    });
-
-    if (!participant) {
-      throw { status: 403, message: 'Solo los administradores pueden eliminar el grupo' };
+  async deleteGroup(groupId, userId, isSystemAdmin = false) {
+    if (!isSystemAdmin) {
+      const participant = await prisma.conversationParticipant.findFirst({
+        where: { conversationId: groupId, userId, role: 'ADMIN' },
+      });
+      if (!participant) {
+        throw { status: 403, message: 'Solo los administradores pueden eliminar el grupo' };
+      }
     }
 
     await prisma.conversation.delete({ where: { id: groupId } });

@@ -122,12 +122,19 @@ export default function Chat() {
       });
     });
     const unsub2 = on('group_created', () => fetchConversations());
+    const unsub4 = on('group_deleted', ({ groupId }) => {
+      setConversations(prev => prev.filter(c => c.id !== groupId));
+      if (activeConversationRef.current?.id === groupId) {
+        setActiveConversation(null);
+        setShowSidebar(true);
+      }
+    });
     const unsub3 = on('messages_read', ({ conversationId, userId }) => {
       if (userId === user?.id) {
         setConversations(prev => prev.map(c => c.id === conversationId ? { ...c, unreadCount: 0 } : c));
       }
     });
-    return () => { unsub1?.(); unsub2?.(); unsub3?.(); };
+    return () => { unsub1?.(); unsub2?.(); unsub3?.(); unsub4?.(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [on, user, fetchConversations]);
 
