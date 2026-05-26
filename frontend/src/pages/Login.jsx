@@ -56,16 +56,16 @@ export default function Login() {
             </div>
 
             <div className="input-group">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <label style={{ marginBottom: 0 }}>Contraseña</label>
-                <Link to="/forgot-password" style={{ fontSize: '0.75rem', fontWeight: 600 }}>¿Olvidaste tu contraseña?</Link>
-              </div>
+              <label>Contraseña</label>
               <div className="input-icon-wrapper">
                 <Lock size={18} className="input-icon" />
                 <input type={showPass ? 'text' : 'password'} className="input" placeholder="Tu contraseña" value={password} onChange={e => setPassword(e.target.value)} required />
                 <button type="button" className="input-icon-right" onClick={() => setShowPass(!showPass)} aria-label="Mostrar/ocultar contraseña">
                   {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
+              </div>
+              <div style={{ textAlign: 'right', marginTop: '4px' }}>
+                <Link to="/forgot-password" style={{ fontSize: '0.75rem', fontWeight: 600 }}>¿Olvidaste tu contraseña?</Link>
               </div>
             </div>
 
