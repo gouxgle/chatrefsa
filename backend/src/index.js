@@ -55,6 +55,9 @@ dirs.forEach((dir) => {
   }
 });
 
+// Trust reverse proxy (Nginx Proxy Manager) para IP real en rate limiting
+app.set('trust proxy', 1);
+
 // Middleware
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors({
