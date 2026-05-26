@@ -6,20 +6,18 @@ import api from '../api/axios';
 import Sidebar from '../components/layout/Sidebar';
 import ChatWindow from '../components/layout/ChatWindow';
 import WhatsNewTip from '../components/WhatsNewTip';
-import { Lock, AlertTriangle, X } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import refsaLogo from '../assets/refsa-mark-transparent.png';
 import './Chat.css';
 
 export default function Chat() {
-  const { user, resendVerification } = useAuth();
+  const { user } = useAuth();
   const { on, joinConversation } = useSocket();
   const toast = useToast();
   const [conversations, setConversations] = useState([]);
   const [activeConversation, setActiveConversation] = useState(null);
   const [showSidebar, setShowSidebar] = useState(true);
   const [loadingConvos, setLoadingConvos] = useState(true);
-  const [resending, setResending] = useState(false);
-  const [bannerDismissed, setBannerDismissed] = useState(false);
 
   const conversationsRef = useRef(conversations);
   const activeConversationRef = useRef(activeConversation);
@@ -57,20 +55,7 @@ export default function Chat() {
     } catch (err) { /* ignore */ }
   };
 
-  const handleResendVerification = async () => {
-    if (!user?.email) return;
-    setResending(true);
-    try {
-      await resendVerification(user.email);
-      toast.success('Correo reenviado', 'Revisá tu bandeja de entrada para verificar tu cuenta.');
-    } catch (err) {
-      toast.error('No se pudo reenviar', err.response?.data?.error || 'Intentá de nuevo más tarde.');
-    } finally {
-      setResending(false);
-    }
-  };
-
-  const fetchConversations = useCallback(async () => {
+const fetchConversations = useCallback(async () => {
     try {
       const { data } = await api.get('/chat/conversations');
       setConversations(data.conversations);
@@ -158,24 +143,6 @@ export default function Chat() {
 
   return (
     <div className="chat-page">
-      {user && !user.isVerified && !bannerDismissed && (
-        <div className="verify-banner" role="alert">
-          <div className="verify-banner-left">
-            <span className="verify-banner-icon"><AlertTriangle size={14} /></span>
-            <span>
-              <strong style={{ color: 'var(--brand-orange-deep)' }}>Cuenta sin verificar.</strong>{' '}
-              Verificá tu correo para habilitar todas las funciones de seguridad.
-            </span>
-          </div>
-          <div className="verify-banner-actions">
-            <button className="btn btn-secondary" onClick={handleResendVerification} disabled={resending}>
-              {resending ? 'Enviando…' : 'Reenviar correo'}
-            </button>
-            <a href="/verify-email" className="btn btn-warning">Verificar ahora</a>
-            <button className="btn-icon" style={{ width: 30, height: 30 }} onClick={() => setBannerDismissed(true)} aria-label="Cerrar"><X size={14} /></button>
-          </div>
-        </div>
-      )}
       <div className="chat-layout">
         <div className={`chat-sidebar-wrapper ${!showSidebar ? 'hidden-mobile' : ''}`}>
           <Sidebar
