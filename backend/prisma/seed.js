@@ -59,6 +59,14 @@ async function main() {
   ];
 
   for (const dept of departments) {
+    const existing = await prisma.conversation.findFirst({
+      where: { name: dept.name, isGroup: true },
+    });
+    if (existing) {
+      console.log('⏭️  Channel already exists:', dept.name);
+      continue;
+    }
+
     const conversation = await prisma.conversation.create({
       data: {
         isGroup: true,
@@ -68,26 +76,16 @@ async function main() {
       },
     });
 
-    // Add admin as group admin
     await prisma.conversationParticipant.create({
-      data: {
-        userId: admin.id,
-        conversationId: conversation.id,
-        role: 'ADMIN',
-      },
+      data: { userId: admin.id, conversationId: conversation.id, role: 'ADMIN' },
     });
 
-    // Add all employees to General channel
     if (dept.name === '🏢 General') {
       const allUsers = await prisma.user.findMany();
       for (const user of allUsers) {
         if (user.id !== admin.id) {
           await prisma.conversationParticipant.create({
-            data: {
-              userId: user.id,
-              conversationId: conversation.id,
-              role: 'MEMBER',
-            },
+            data: { userId: user.id, conversationId: conversation.id, role: 'MEMBER' },
           });
         }
       }

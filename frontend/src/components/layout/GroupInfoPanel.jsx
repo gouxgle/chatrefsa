@@ -4,9 +4,9 @@ import { useSocket } from '../../context/SocketContext';
 import { useToast } from '../../context/ToastContext';
 import {
   X, Users, Image as ImageIcon, Settings, FileText, Video as VideoIcon,
-  Music as MusicIcon, BellOff, Bell, LogOut, Trash2, ShieldOff, Inbox
+  Music as MusicIcon, BellOff, Bell, LogOut, Trash2, Inbox
 } from 'lucide-react';
-import { API_URL } from '../../api/axios';
+import api from '../../api/axios';
 
 /**
  * Panel lateral derecho con info del grupo, en tabs:
@@ -19,22 +19,52 @@ import { API_URL } from '../../api/axios';
  *  - messages: array de mensajes de la conversación (para extraer multimedia)
  *  - onClose: cerrar el panel
  */
-export default function GroupInfoPanel({ conversation, messages = [], onClose }) {
+export default function GroupInfoPanel({ conversation, messages = [], onClose, onLeft, onDeleted }) {
   const { user } = useAuth();
   const { isUserOnline } = useSocket();
   const toast = useToast();
   const [tab, setTab] = useState('members');
   const [muted, setMuted] = useState(false);
   const [openInvite, setOpenInvite] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const members = conversation.participants || [];
 
-  // Extraer archivos compartidos por orden cronológico inverso
   const mediaFiles = messages
     .flatMap(m => (m.files || []).map(f => ({ ...f, msgType: m.type, createdAt: m.createdAt })))
     .reverse();
 
   const initial = (conversation.name || '?')[0].toUpperCase();
+
+  const handleLeave = async () => {
+    if (!confirm('¿Salir del grupo? Dejarás de recibir mensajes.')) return;
+    setLoading(true);
+    try {
+      await api.delete(`/groups/${conversation.id}/members/${user.id}`);
+      toast.success('Saliste del grupo');
+      onClose();
+      if (onLeft) onLeft(conversation.id);
+    } catch {
+      toast.error('Error', 'No se pudo salir del grupo');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm(`¿Eliminar el grupo "${conversation.name}"? Esta acción no se puede deshacer.`)) return;
+    setLoading(true);
+    try {
+      await api.delete(`/groups/${conversation.id}`);
+      toast.success('Grupo eliminado');
+      onClose();
+      if (onDeleted) onDeleted(conversation.id);
+    } catch {
+      toast.error('Error', 'No se pudo eliminar el grupo');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleNotImplemented = (label) => {
     toast.info('Próximamente', `${label} estará disponible en una próxima versión.`);
@@ -94,7 +124,7 @@ export default function GroupInfoPanel({ conversation, messages = [], onClose })
                 <div key={p.id} className="group-member-item">
                   <div className="avatar avatar-md">
                     {p.user?.avatar
-                      ? <img src={`${API_URL}${p.user.avatar}`} alt="" />
+                      ? <img src={p.user.avatar} alt="" />
                       : <span>{(p.user?.fullName || p.user?.username || '?')[0].toUpperCase()}</span>}
                     <span className={`online-dot ${isUserOnline(p.user?.id) ? 'online' : 'offline'}`} />
                   </div>
@@ -126,7 +156,7 @@ export default function GroupInfoPanel({ conversation, messages = [], onClose })
                   const isImage = f.mimetype?.startsWith('image/');
                   const isVideo = f.mimetype?.startsWith('video/');
                   const isAudio = f.mimetype?.startsWith('audio/');
-                  const url = `${API_URL}/uploads/${f.path?.split('/uploads/')?.[1] || f.filename}`;
+                  const url = `/uploads/${f.path?.split('/uploads/')?.[1] || f.filename}`;
                   return (
                     <a
                       key={f.id}
@@ -200,7 +230,7 @@ export default function GroupInfoPanel({ conversation, messages = [], onClose })
                   </div>
                   <div className="config-row-sub">Vas a dejar de recibir mensajes de este grupo.</div>
                 </div>
-                <button className="btn btn-secondary" style={{ height: 32, fontSize: '0.75rem', color: 'var(--danger)', borderColor: 'var(--danger-light)' }} onClick={() => handleNotImplemented('Salir del grupo')}>
+                <button className="btn btn-secondary" style={{ height: 32, fontSize: '0.75rem', color: 'var(--danger)', borderColor: 'var(--danger-light)' }} onClick={handleLeave} disabled={loading}>
                   Salir
                 </button>
               </div>
@@ -213,7 +243,7 @@ export default function GroupInfoPanel({ conversation, messages = [], onClose })
                     </div>
                     <div className="config-row-sub">Esta acción no se puede deshacer.</div>
                   </div>
-                  <button className="btn btn-danger" style={{ height: 32, fontSize: '0.75rem' }} onClick={() => handleNotImplemented('Eliminar grupo')}>
+                  <button className="btn btn-danger" style={{ height: 32, fontSize: '0.75rem' }} onClick={handleDelete} disabled={loading}>
                     Eliminar
                   </button>
                 </div>

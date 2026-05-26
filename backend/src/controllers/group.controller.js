@@ -94,4 +94,27 @@ const updateMemberRole = async (req, res) => {
   }
 };
 
-module.exports = { createGroup, updateGroup, addMember, removeMember, updateMemberRole };
+const deleteGroup = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const group = await require('../config/database').conversation.findUnique({
+      where: { id },
+      include: { participants: { select: { userId: true } } },
+    });
+
+    await groupService.deleteGroup(id, req.user.id);
+
+    const io = req.app.get('io');
+    if (io && group) {
+      group.participants.forEach((p) => {
+        io.to(`user_${p.userId}`).emit('group_deleted', { groupId: id });
+      });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
+  }
+};
+
+module.exports = { createGroup, updateGroup, addMember, removeMember, updateMemberRole, deleteGroup };
