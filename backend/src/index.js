@@ -117,6 +117,21 @@ app.use((err, req, res, next) => {
 // Setup Socket.io
 setupSocket(io);
 
+// Keep Prisma connections alive — ping DB every 4 minutes
+const prisma = require('./config/database');
+setInterval(async () => {
+  try { await prisma.$queryRaw`SELECT 1`; }
+  catch (e) { logger.error('DB keep-alive failed:', e.message); }
+}, 4 * 60 * 1000);
+
+// Prevent unhandled rejections from crashing the process
+process.on('unhandledRejection', (reason) => {
+  logger.error('Unhandled Rejection:', reason?.message || reason);
+});
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught Exception:', error.message);
+});
+
 // Start server
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, '0.0.0.0', () => {
