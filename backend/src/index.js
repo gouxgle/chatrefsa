@@ -19,6 +19,7 @@ const chatRoutes = require('./routes/chat.routes');
 const groupRoutes = require('./routes/group.routes');
 const fileRoutes = require('./routes/file.routes');
 const adminRoutes = require('./routes/admin.routes');
+const stickerRoutes = require('./routes/sticker.routes');
 
 const app = express();
 const server = http.createServer(app);
@@ -47,7 +48,7 @@ app.set('io', io);
 
 // Create upload directories
 const uploadDir = process.env.UPLOAD_DIR || './uploads';
-const dirs = ['avatars', 'images', 'documents', 'videos', 'audio'];
+const dirs = ['avatars', 'images', 'documents', 'videos', 'audio', 'stickers'];
 dirs.forEach((dir) => {
   const dirPath = path.join(uploadDir, dir);
   if (!fs.existsSync(dirPath)) {
@@ -96,6 +97,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/stickers', stickerRoutes);
 
 // Error handler
 app.use((err, req, res, next) => {

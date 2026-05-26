@@ -37,6 +37,7 @@ model User {
   messageReads     MessageRead[]
   uploadedFiles    File[]
   systemLogs       SystemLog[]
+  stickers         Sticker[]
   createdConversations Conversation[] @relation("CreatedConversations")
 
   @@map("users")
@@ -128,6 +129,22 @@ enum MessageType {
   VIDEO
   AUDIO
   SYSTEM
+  STICKER
+}
+
+// ─── Stickers ───────────────────────────────────────
+model Sticker {
+  id           String   @id @default(uuid())
+  name         String
+  pack         String   @default("General")
+  filename     String
+  path         String
+  uploadedById String   @map("uploaded_by_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  uploadedBy User @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+
+  @@map("stickers")
 }
 
 // ─── Message Read Receipts ─────────────────────────

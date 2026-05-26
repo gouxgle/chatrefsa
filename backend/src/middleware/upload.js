@@ -68,4 +68,21 @@ const uploadAvatar = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
 });
 
-module.exports = { upload, uploadAvatar };
+const uploadSticker = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, path.join(uploadDir, 'stickers'));
+    },
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname);
+      cb(null, `sticker-${uuidv4()}${ext}`);
+    },
+  }),
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) cb(null, true);
+    else cb(new Error('Solo se permiten imágenes para stickers'), false);
+  },
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+});
+
+module.exports = { upload, uploadAvatar, uploadSticker };

@@ -1952,3 +1952,152 @@
   transition: var(--transition-fast);
 }
 .lightbox-download-btn:hover { background: var(--accent-hover); }
+
+/* ─── Sticker Picker ─────────────────────────────── */
+.sticker-picker-wrapper {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 200;
+}
+.sticker-picker {
+  width: 320px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.sticker-picker-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-alt);
+}
+.sticker-picker-tabs {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  flex: 1;
+  scrollbar-width: none;
+}
+.sticker-picker-tabs::-webkit-scrollbar { display: none; }
+.sticker-tab {
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.sticker-tab:hover, .sticker-tab.active {
+  background: var(--accent);
+  color: white;
+}
+.sticker-picker-body {
+  height: 220px;
+  overflow-y: auto;
+  padding: 8px;
+}
+.sticker-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.sticker-item {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--radius);
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--surface-alt);
+  border: 2px solid transparent;
+  transition: var(--transition-fast);
+}
+.sticker-item:hover { border-color: var(--accent); transform: scale(1.05); }
+.sticker-item img { width: 100%; height: 100%; object-fit: contain; padding: 4px; }
+.sticker-delete-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.5);
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.sticker-item:hover .sticker-delete-btn { display: flex; }
+.sticker-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-tertiary);
+  font-size: 0.8rem;
+  text-align: center;
+}
+.sticker-upload-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px;
+}
+.sticker-upload-title {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+.sticker-upload-input {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 0.8rem;
+}
+.sticker-upload-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.8rem !important;
+  padding: 7px 12px !important;
+}
+.sticker-upload-hint {
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+/* ─── Sticker Message ─────────────────────────────── */
+.sticker-message {
+  display: flex;
+  flex-direction: column;
+  max-width: 160px;
+}
+.sticker-message-img {
+  width: 150px;
+  height: 150px;
+  object-fit: contain;
+  border-radius: var(--radius);
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.12));
+  cursor: default;
+}

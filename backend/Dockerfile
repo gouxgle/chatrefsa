@@ -18,7 +18,7 @@ RUN npx prisma generate --schema=./prisma/schema.prisma
 COPY . .
 
 # Create upload directories
-RUN mkdir -p /app/uploads/avatars /app/uploads/images /app/uploads/documents /app/uploads/videos /app/uploads/audio
+RUN mkdir -p /app/uploads/avatars /app/uploads/images /app/uploads/documents /app/uploads/videos /app/uploads/audio /app/uploads/stickers
 
 EXPOSE 5000
 

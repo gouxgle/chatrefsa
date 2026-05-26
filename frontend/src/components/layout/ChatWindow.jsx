@@ -2,10 +2,11 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
 import { useToast } from '../../context/ToastContext';
-import { ArrowLeft, Search, MoreVertical, Send, Paperclip, Smile, X, Reply, Pencil, Trash2, Forward, Check, CheckCheck, FileText, Download, Image as ImageIcon, Video, Music, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Search, MoreVertical, Send, Paperclip, Smile, Sticker, X, Reply, Pencil, Trash2, Forward, Check, CheckCheck, FileText, Download, Image as ImageIcon, Video, Music, MessageCircle } from 'lucide-react';
 import { format } from 'date-fns';
-import api, { API_URL } from '../../api/axios';
+import api from '../../api/axios';
 import GroupInfoPanel from './GroupInfoPanel';
+import StickerPicker from './StickerPicker';
 
 const EMOJIS_BY_CAT = {
   '😀': ['😀','😁','😂','🤣','😃','😄','😅','😆','😉','😊','😋','😎','😍','🥰','😘','😗','😙','😚','🙂','🤗','🤔','😐','😑','😶','🙄','😏','😣','😥','😮','🤐','😯','😪','😫','😴','😌','😛','😜','😝','🤤','😒','😓','😔','😕','🙃','🤑','😲','🙁','😖','😞','😟','😤','😢','😭','😦','😧','😨','😩','🤯','😬','😰','😱'],
@@ -27,6 +28,7 @@ export default function ChatWindow({ conversation, onBack, onUpdate }) {
   const [editMsg, setEditMsg] = useState(null);
   const [showEmoji, setShowEmoji] = useState(false);
   const [emojiCat, setEmojiCat] = useState('😀');
+  const [showStickers, setShowStickers] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [lightbox, setLightbox] = useState(null);
   const messagesEndRef = useRef(null);
@@ -79,6 +81,11 @@ export default function ChatWindow({ conversation, onBack, onUpdate }) {
     });
     return () => { unsub1?.(); unsub2?.(); unsub3?.(); unsub4?.(); };
   }, [on, conversation.id, markRead]);
+
+  const handleSendSticker = (sticker) => {
+    socketSend(conversation.id, `/uploads/stickers/${sticker.filename}`, 'STICKER');
+    setShowStickers(false);
+  };
 
   const handleSend = async () => {
     const text = input.trim();
@@ -152,6 +159,21 @@ export default function ChatWindow({ conversation, onBack, onUpdate }) {
 
     const isOwn = msg.senderId === user?.id || msg.sender?.id === user?.id;
     const isRead = msg.reads?.some(r => r.userId !== user?.id);
+
+    if (msg.type === 'STICKER') {
+      return (
+        <div key={msg.id} className={`message-wrapper ${isOwn ? 'outgoing' : 'incoming'}`}>
+          <div className="sticker-message">
+            {!isOwn && conversation.isGroup && <div className="message-sender">{msg.sender?.fullName || msg.sender?.username}</div>}
+            <img src={msg.content} alt="sticker" className="sticker-message-img" />
+            <div className="message-meta" style={{ justifyContent: isOwn ? 'flex-end' : 'flex-start' }}>
+              <span className="message-time">{msg.createdAt ? format(new Date(msg.createdAt), 'HH:mm') : ''}</span>
+              {isOwn && <span className={`message-status ${isRead ? 'read' : ''}`}>{isRead ? <CheckCheck size={14} /> : <Check size={14} />}</span>}
+            </div>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div key={msg.id} className={`message-wrapper ${isOwn ? 'outgoing' : 'incoming'}`}>
@@ -288,12 +310,16 @@ export default function ChatWindow({ conversation, onBack, onUpdate }) {
         {/* Input */}
         <div className="message-input-area">
           <div className="message-input-actions">
-            <button className="btn-icon" onClick={() => setShowEmoji(!showEmoji)}><Smile size={22} /></button>
+            <button className="btn-icon" onClick={() => { setShowEmoji(!showEmoji); setShowStickers(false); }}><Smile size={22} /></button>
+            <button className="btn-icon" onClick={() => { setShowStickers(!showStickers); setShowEmoji(false); }} title="Stickers"><Sticker size={22} /></button>
             <button className="btn-icon" onClick={() => fileInputRef.current?.click()}><Paperclip size={22} /></button>
             <input ref={fileInputRef} type="file" hidden onChange={handleFileUpload} />
           </div>
           <div className="message-input-wrapper" style={{ position: 'relative' }}>
             <textarea ref={textareaRef} rows={1} placeholder="Escribe un mensaje..." value={input} onChange={handleTextareaInput} onKeyDown={handleKeyDown} />
+            {showStickers && (
+              <StickerPicker onSend={handleSendSticker} onClose={() => setShowStickers(false)} />
+            )}
             {showEmoji && (
               <div className="emoji-picker-wrapper">
                 <div className="emoji-picker">
