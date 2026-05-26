@@ -25,29 +25,6 @@ async function main() {
   });
   console.log('✅ Admin user created:', admin.email);
 
-  // Create demo employees
-  const employeePassword = await bcrypt.hash('empleado123', 12);
-  const employees = [
-    { email: 'maria@empresa.com', username: 'maria.garcia', fullName: 'María García' },
-    { email: 'carlos@empresa.com', username: 'carlos.lopez', fullName: 'Carlos López' },
-    { email: 'ana@empresa.com', username: 'ana.martinez', fullName: 'Ana Martínez' },
-    { email: 'pedro@empresa.com', username: 'pedro.sanchez', fullName: 'Pedro Sánchez' },
-  ];
-
-  for (const emp of employees) {
-    await prisma.user.upsert({
-      where: { email: emp.email },
-      update: {},
-      create: {
-        ...emp,
-        password: employeePassword,
-        role: 'EMPLOYEE',
-        status: 'AVAILABLE',
-        isVerified: true,
-      },
-    });
-    console.log('✅ Employee created:', emp.email);
-  }
 
   // Create department channels
   const departments = [
