@@ -293,7 +293,7 @@ export default function AdminDashboard() {
                     onChange={(e) => setUserSearch(e.target.value)}
                   />
                 </div>
-                <button className="btn btn-primary" style={{ height: '34px' }} onClick={() => setShowUserModal(true)}>
+                <button className="btn btn-primary" style={{ height: '34px' }} onClick={() => { setNewUser({ username: '', password: '', fullName: '', email: '', role: 'EMPLOYEE' }); setShowUserModal(true); }}>
                   <Plus size={14} /> Nuevo usuario
                 </button>
               </div>
@@ -498,16 +498,16 @@ export default function AdminDashboard() {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Nuevo usuario</h3>
-              <button className="btn-icon" onClick={() => setShowUserModal(false)} aria-label="Cerrar"><X size={18} /></button>
+              <button className="btn-icon" onClick={() => { setShowUserModal(false); setNewUser({ username: '', password: '', fullName: '', email: '', role: 'EMPLOYEE' }); }} aria-label="Cerrar"><X size={18} /></button>
             </div>
             <div className="modal-body">
               <div className="input-group">
                 <label>Nombre de usuario *</label>
-                <input className="input" value={newUser.username} onChange={handleNewUserChange('username')} placeholder="juan.perez" />
+                <input className="input" value={newUser.username} onChange={handleNewUserChange('username')} placeholder="juan.perez" autoComplete="off" />
               </div>
               <div className="input-group" style={{ marginTop: '1rem' }}>
                 <label>Contraseña *</label>
-                <input type="password" className="input" value={newUser.password} onChange={handleNewUserChange('password')} placeholder="Mínimo 6 caracteres" />
+                <input type="password" className="input" value={newUser.password} onChange={handleNewUserChange('password')} placeholder="Mínimo 6 caracteres" autoComplete="new-password" />
               </div>
               <div className="input-group" style={{ marginTop: '1rem' }}>
                 <label>Nombre completo</label>
