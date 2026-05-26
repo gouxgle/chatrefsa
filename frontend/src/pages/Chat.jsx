@@ -59,7 +59,7 @@ const fetchConversations = useCallback(async () => {
     try {
       const { data } = await api.get('/chat/conversations');
       setConversations(data.conversations);
-    } catch (err) { console.error('Error fetching conversations:', err); }
+    } catch { /* silent */ }
     finally { setLoadingConvos(false); }
   }, []);
 

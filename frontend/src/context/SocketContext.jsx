@@ -20,7 +20,7 @@ export function SocketProvider({ children }) {
 
     const s = io(WS_URL, { auth: { token }, transports: ['websocket', 'polling'], reconnection: true, reconnectionDelay: 1000 });
 
-    s.on('connect', () => console.log('🔌 Socket connected'));
+    s.on('connect', () => {});
     s.on('user_online', ({ userId }) => setOnlineUsers(prev => ({ ...prev, [userId]: true })));
     s.on('user_offline', ({ userId }) => setOnlineUsers(prev => ({ ...prev, [userId]: false })));
     s.on('user_typing', ({ userId, conversationId }) => {

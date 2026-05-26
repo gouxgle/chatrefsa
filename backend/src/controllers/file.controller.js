@@ -3,6 +3,23 @@ const chatService = require('../services/chat.service');
 const path = require('path');
 const fs = require('fs');
 
+const UPLOAD_BASE = path.resolve(process.env.UPLOAD_DIR || './uploads');
+
+const SAFE_CONTENT_TYPES = new Set([
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+  'video/mp4', 'video/webm', 'video/ogg',
+  'audio/mpeg', 'audio/ogg', 'audio/wav', 'audio/webm',
+  'application/pdf',
+]);
+
+const safeFilePath = (filePath) => {
+  const resolved = path.resolve(filePath);
+  if (!resolved.startsWith(UPLOAD_BASE + path.sep) && resolved !== UPLOAD_BASE) {
+    return null;
+  }
+  return resolved;
+};
+
 const uploadFile = async (req, res) => {
   try {
     if (!req.file) {
@@ -11,13 +28,11 @@ const uploadFile = async (req, res) => {
 
     const { conversationId, replyToId } = req.body;
 
-    // Determine message type
     let messageType = 'FILE';
     if (req.file.mimetype.startsWith('image/')) messageType = 'IMAGE';
     else if (req.file.mimetype.startsWith('video/')) messageType = 'VIDEO';
     else if (req.file.mimetype.startsWith('audio/')) messageType = 'AUDIO';
 
-    // Create message with file
     let message = null;
     if (conversationId) {
       message = await chatService.sendMessage({
@@ -29,14 +44,12 @@ const uploadFile = async (req, res) => {
       });
     }
 
-    // Save file record
     const fileRecord = await fileService.saveFile({
       file: req.file,
       messageId: message ? message.id : null,
       uploadedById: req.user.id,
     });
 
-    // Emit via socket
     if (conversationId) {
       const io = req.app.get('io');
       if (io) {
@@ -56,13 +69,14 @@ const uploadFile = async (req, res) => {
 const downloadFile = async (req, res) => {
   try {
     const file = await fileService.getFile(req.params.id);
-    const filePath = path.resolve(file.path);
+    const filePath = safeFilePath(file.path);
 
-    if (!fs.existsSync(filePath)) {
+    if (!filePath || !fs.existsSync(filePath)) {
       return res.status(404).json({ error: 'Archivo no encontrado en el servidor' });
     }
 
-    res.download(filePath, file.originalName);
+    const safeName = path.basename(file.originalName || 'archivo');
+    res.download(filePath, safeName);
   } catch (error) {
     res.status(error.status || 500).json({ error: error.message });
   }
@@ -71,13 +85,17 @@ const downloadFile = async (req, res) => {
 const previewFile = async (req, res) => {
   try {
     const file = await fileService.getFile(req.params.id);
-    const filePath = path.resolve(file.path);
+    const filePath = safeFilePath(file.path);
 
-    if (!fs.existsSync(filePath)) {
+    if (!filePath || !fs.existsSync(filePath)) {
       return res.status(404).json({ error: 'Archivo no encontrado' });
     }
 
-    res.setHeader('Content-Type', file.mimetype);
+    const contentType = SAFE_CONTENT_TYPES.has(file.mimetype)
+      ? file.mimetype
+      : 'application/octet-stream';
+
+    res.setHeader('Content-Type', contentType);
     res.sendFile(filePath);
   } catch (error) {
     res.status(error.status || 500).json({ error: error.message });

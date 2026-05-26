@@ -1,10 +1,4 @@
 module.exports = (io, socket) => {
-  // Listen for group events
-  socket.on('join_group', (groupId) => {
-    socket.join(groupId);
-  });
-
-  socket.on('leave_group', (groupId) => {
-    socket.leave(groupId);
-  });
+  // Group room membership is managed server-side via chatHandler.joinRooms()
+  // No unauthenticated join/leave events exposed
 };

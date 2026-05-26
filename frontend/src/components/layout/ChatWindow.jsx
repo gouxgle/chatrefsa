@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
 import { useToast } from '../../context/ToastContext';
-import { ArrowLeft, Search, MoreVertical, Send, Paperclip, Smile, Grid3x3, X, Reply, Pencil, Trash2, Forward, Check, CheckCheck, FileText, Download, Image as ImageIcon, Video, Music, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Search, MoreVertical, Send, Paperclip, Smile, Grid3x3, X, Reply, Pencil, Trash2, Check, CheckCheck, FileText, Download, Image as ImageIcon, Video, Music, MessageCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import api, { API_URL } from '../../api/axios';
 import GroupInfoPanel from './GroupInfoPanel';
@@ -142,9 +142,22 @@ export default function ChatWindow({ conversation, onBack, onUpdate }) {
   const startReply = (msg) => { setReplyTo(msg); setEditMsg(null); textareaRef.current?.focus(); };
 
   const deleteMessage = async (id) => { try { await api.delete(`/chat/messages/${id}`); } catch { /* ignore */ } };
-  const forwardMessage = async (id) => {
-    const target = prompt('ID de la conversación destino:');
-    if (target) { try { await api.post(`/chat/messages/${id}/forward`, { conversationId: target }); } catch { /* ignore */ } }
+
+  const handleDownload = async (fileId, filename) => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const res = await fetch(`/api/files/${fileId}/download`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename || 'archivo';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch { /* ignore */ }
   };
 
   const getFileIcon = (type) => {
@@ -201,17 +214,13 @@ export default function ChatWindow({ conversation, onBack, onUpdate }) {
                         <div className="image-action-btn" title="Ampliar Imagen">
                           <Search size={18} />
                         </div>
-                        <a 
-                          href={`${API_URL}/api/files/${f.id}/download?token=${localStorage.getItem('accessToken')}`} 
-                          download 
-                          className="image-action-btn" 
-                          title="Descargar Imagen" 
-                          onClick={(e) => e.stopPropagation()}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <button
+                          className="image-action-btn"
+                          title="Descargar Imagen"
+                          onClick={(e) => { e.stopPropagation(); handleDownload(f.id, f.originalName); }}
                         >
                           <Download size={18} />
-                        </a>
+                        </button>
                       </div>
                     </div>
                   ) : f.mimetype?.startsWith('video/') ? (
@@ -223,7 +232,7 @@ export default function ChatWindow({ conversation, onBack, onUpdate }) {
                         <div className="file-attachment-name">{f.originalName}</div>
                         <div className="file-attachment-size">{(f.size / 1024).toFixed(1)} KB</div>
                       </div>
-                      <a href={`${API_URL}/api/files/${f.id}/download?token=${localStorage.getItem('accessToken')}`} download className="btn-icon" target="_blank" rel="noopener noreferrer"><Download size={16} /></a>
+                      <button className="btn-icon" onClick={() => handleDownload(f.id, f.originalName)} title="Descargar"><Download size={16} /></button>
                     </div>
                   )}
                 </div>
@@ -358,17 +367,14 @@ export default function ChatWindow({ conversation, onBack, onUpdate }) {
             </div>
             <div className="lightbox-footer">
               <span className="lightbox-filename">{lightbox.name}</span>
-              <a 
-                href={`${API_URL}/api/files/${lightbox.id}/download?token=${localStorage.getItem('accessToken')}`} 
-                download 
+              <button
                 className="lightbox-download-btn"
                 title="Descargar"
-                target="_blank"
-                rel="noopener noreferrer"
+                onClick={() => handleDownload(lightbox.id, lightbox.name)}
               >
                 <Download size={18} />
                 Descargar
-              </a>
+              </button>
             </div>
           </div>
         </div>

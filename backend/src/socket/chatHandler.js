@@ -1,9 +1,16 @@
 const prisma = require('../config/database');
+const { sanitize } = require('../utils/helpers');
+
+const isParticipant = async (userId, conversationId) => {
+  const p = await prisma.conversationParticipant.findFirst({
+    where: { userId, conversationId },
+  });
+  return !!p;
+};
 
 module.exports = (io, socket) => {
   const userId = socket.userId;
 
-  // Join conversation rooms
   const joinRooms = async () => {
     const participations = await prisma.conversationParticipant.findMany({
       where: { userId },
@@ -14,20 +21,24 @@ module.exports = (io, socket) => {
       socket.join(p.conversationId);
     });
 
-    // Personal room for direct notifications
     socket.join(`user_${userId}`);
   };
 
   joinRooms();
 
-  // Send message via socket
   socket.on('send_message', async (data) => {
     try {
       const { conversationId, content, type, replyToId } = data;
 
+      if (!conversationId || !(await isParticipant(userId, conversationId))) {
+        return socket.emit('error', { message: 'Sin acceso a esta conversación' });
+      }
+
+      const safeContent = type === 'STICKER' ? content : sanitize(content || '');
+
       const message = await prisma.message.create({
         data: {
-          content,
+          content: safeContent,
           type: type || 'TEXT',
           conversationId,
           senderId: userId,
@@ -58,9 +69,10 @@ module.exports = (io, socket) => {
     }
   });
 
-  // Mark messages as read
   socket.on('mark_read', async ({ conversationId }) => {
     try {
+      if (!conversationId || !(await isParticipant(userId, conversationId))) return;
+
       const unread = await prisma.message.findMany({
         where: {
           conversationId,
@@ -87,14 +99,13 @@ module.exports = (io, socket) => {
     }
   });
 
-  // Edit message
   socket.on('edit_message', async ({ messageId, content }) => {
     try {
       const message = await prisma.message.findUnique({ where: { id: messageId } });
       if (message && message.senderId === userId) {
         const updated = await prisma.message.update({
           where: { id: messageId },
-          data: { content, isEdited: true },
+          data: { content: sanitize(content || ''), isEdited: true },
           include: {
             sender: { select: { id: true, username: true, fullName: true, avatar: true } },
           },
@@ -106,7 +117,6 @@ module.exports = (io, socket) => {
     }
   });
 
-  // Delete message
   socket.on('delete_message', async ({ messageId }) => {
     try {
       const message = await prisma.message.findUnique({ where: { id: messageId } });
@@ -125,8 +135,9 @@ module.exports = (io, socket) => {
     }
   });
 
-  // Join new conversation room
-  socket.on('join_conversation', (conversationId) => {
-    socket.join(conversationId);
+  socket.on('join_conversation', async (conversationId) => {
+    if (conversationId && await isParticipant(userId, conversationId)) {
+      socket.join(conversationId);
+    }
   });
 };
