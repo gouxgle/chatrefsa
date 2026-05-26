@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
 import { useToast } from '../../context/ToastContext';
-import { ArrowLeft, Search, MoreVertical, Send, Paperclip, Smile, Sticker, X, Reply, Pencil, Trash2, Forward, Check, CheckCheck, FileText, Download, Image as ImageIcon, Video, Music, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Search, MoreVertical, Send, Paperclip, Smile, Grid3x3, X, Reply, Pencil, Trash2, Forward, Check, CheckCheck, FileText, Download, Image as ImageIcon, Video, Music, MessageCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import api from '../../api/axios';
 import GroupInfoPanel from './GroupInfoPanel';
@@ -311,7 +311,7 @@ export default function ChatWindow({ conversation, onBack, onUpdate }) {
         <div className="message-input-area">
           <div className="message-input-actions">
             <button className="btn-icon" onClick={() => { setShowEmoji(!showEmoji); setShowStickers(false); }}><Smile size={22} /></button>
-            <button className="btn-icon" onClick={() => { setShowStickers(!showStickers); setShowEmoji(false); }} title="Stickers"><Sticker size={22} /></button>
+            <button className="btn-icon" onClick={() => { setShowStickers(!showStickers); setShowEmoji(false); }} title="Stickers"><Grid3x3 size={22} /></button>
             <button className="btn-icon" onClick={() => fileInputRef.current?.click()}><Paperclip size={22} /></button>
             <input ref={fileInputRef} type="file" hidden onChange={handleFileUpload} />
           </div>
