@@ -1,4 +1,3 @@
-node_modules/
 .env
 dist/
 build/
@@ -6,6 +5,5 @@ uploads/*
 !uploads/.gitkeep
 *.log
 .DS_Store
-mysql_data/
 frontend (2)/
 *.zip
