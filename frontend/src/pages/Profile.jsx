@@ -1,97 +1,206 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ArrowLeft, Camera, Save } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
+import { ArrowLeft, Camera, Save, Lock, Mail, AtSign, Briefcase, Calendar, ShieldCheck, CheckCircle, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import api, { API_URL } from '../api/axios';
 import './Chat.css';
+
+const STATUSES = [
+  { value: 'AVAILABLE',     label: 'Disponible',    dotClass: '' },
+  { value: 'BUSY',          label: 'Ocupado',       dotClass: 'busy' },
+  { value: 'AWAY',          label: 'Ausente',       dotClass: 'away' },
+  { value: 'DO_NOT_DISTURB',label: 'No molestar',   dotClass: 'dnd' },
+];
 
 export default function Profile() {
   const { user, updateUser } = useAuth();
   const navigate = useNavigate();
+  const toast = useToast();
   const fileRef = useRef(null);
-  const [form, setForm] = useState({ fullName: user?.fullName || '', username: user?.username || '', customStatus: user?.customStatus || '' });
-  const [passForm, setPassForm] = useState({ currentPassword: '', newPassword: '' });
+
+  const [tab, setTab] = useState('cuenta');
+  const [form, setForm] = useState({
+    fullName: user?.fullName || '',
+    username: user?.username || '',
+    customStatus: user?.customStatus || '',
+  });
   const [status, setStatus] = useState(user?.status || 'AVAILABLE');
+  const [passForm, setPassForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState('');
+
+  const statusObj = STATUSES.find(s => s.value === status) || STATUSES[0];
 
   const handleSave = async () => {
-    setLoading(true); setMsg('');
+    setLoading(true);
     try {
       await api.put('/users/profile', form);
       await api.put('/users/status', { status });
       updateUser({ ...form, status });
-      setMsg('✅ Perfil actualizado');
-    } catch (err) { setMsg('❌ ' + (err.response?.data?.error || 'Error')); }
-    finally { setLoading(false); }
+      toast.success('Perfil actualizado', 'Los cambios se guardaron correctamente.');
+    } catch (err) {
+      toast.error('No se pudo actualizar', err.response?.data?.error || 'Intentá de nuevo.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAvatar = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const fd = new FormData(); fd.append('avatar', file);
+    const fd = new FormData();
+    fd.append('avatar', file);
     try {
       const { data } = await api.put('/users/avatar', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       updateUser({ avatar: data.user.avatar });
-      setMsg('✅ Foto actualizada');
-    } catch { setMsg('❌ Error al subir foto'); }
+      toast.success('Foto actualizada', 'Tu nueva foto de perfil ya está visible.');
+    } catch {
+      toast.error('No se pudo subir la foto', 'Verificá el formato y el tamaño del archivo.');
+    }
   };
 
   const handlePassword = async () => {
-    if (passForm.newPassword.length < 6) { setMsg('❌ Mínimo 6 caracteres'); return; }
+    if (passForm.newPassword.length < 6) return toast.error('Contraseña muy corta', 'Debe tener al menos 6 caracteres.');
+    if (passForm.newPassword !== passForm.confirmPassword) return toast.error('No coinciden', 'La confirmación no coincide con la nueva contraseña.');
     try {
-      await api.put('/users/password', passForm);
-      setPassForm({ currentPassword: '', newPassword: '' });
-      setMsg('✅ Contraseña actualizada');
-    } catch (err) { setMsg('❌ ' + (err.response?.data?.error || 'Error')); }
+      await api.put('/users/password', { currentPassword: passForm.currentPassword, newPassword: passForm.newPassword });
+      setPassForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      toast.success('Contraseña actualizada', 'Tu contraseña se cambió correctamente.');
+    } catch (err) {
+      toast.error('No se pudo cambiar la contraseña', err.response?.data?.error || 'Verificá la contraseña actual.');
+    }
   };
 
-  const statuses = [
-    { value: 'AVAILABLE', label: '🟢 Disponible' },
-    { value: 'BUSY', label: '🟡 Ocupado' },
-    { value: 'AWAY', label: '⚪ Ausente' },
-    { value: 'DO_NOT_DISTURB', label: '🔴 No molestar' },
-  ];
+  const initial = (user?.fullName || user?.username || 'U')[0].toUpperCase();
+  const memberSince = user?.createdAt ? new Date(user.createdAt).toLocaleDateString('es', { year: 'numeric', month: 'long' }) : '—';
 
   return (
-    <div className="profile-page">
-      <div className="chat-header">
-        <button className="btn-icon" onClick={() => navigate('/')}><ArrowLeft size={20} /></button>
-        <div className="chat-header-info"><div className="chat-header-name">Mi Perfil</div></div>
+    <div className="profile-page-v2">
+      <div className="profile-topbar">
+        <button className="btn-icon" onClick={() => navigate('/')} aria-label="Volver"><ArrowLeft size={20} /></button>
+        <div className="profile-topbar-title">Mi perfil</div>
       </div>
-      <div className="profile-content">
-        <div className="profile-card slide-up">
-          <div className="profile-avatar-section">
-            <div className="profile-avatar-upload" onClick={() => fileRef.current?.click()}>
-              <div className="avatar avatar-xl">
-                {user?.avatar ? <img src={`${API_URL}${user.avatar}`} alt="" /> : <span style={{ fontSize: '2rem' }}>{(user?.fullName || 'U')[0]}</span>}
+
+      <div className="profile-scroll">
+        <div className="profile-container">
+          <div className="profile-hero" />
+          <div className="profile-card-v2">
+            <div className="profile-hero-row">
+              <div className="profile-avatar-xxl" onClick={() => fileRef.current?.click()} role="button" aria-label="Cambiar foto">
+                {user?.avatar
+                  ? <img src={`${API_URL}${user.avatar}`} alt="" />
+                  : <span>{initial}</span>}
+                <div className="profile-avatar-camera">
+                  <Camera size={22} />
+                  <span>Cambiar</span>
+                </div>
               </div>
-              <div className="profile-avatar-overlay"><Camera size={24} /></div>
+              <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleAvatar} />
+
+              <div className="profile-identity">
+                <div className="profile-name-line">
+                  <span className="profile-display-name">{user?.fullName || user?.username}</span>
+                  {user?.role === 'ADMIN' && (
+                    <span className="profile-role-badge"><ShieldCheck size={11} /> Administrador</span>
+                  )}
+                </div>
+                <div className="profile-meta-row">
+                  {user?.email && <span><Mail size={13} /> {user.email}</span>}
+                  {user?.username && <span><AtSign size={13} /> {user.username}</span>}
+                  <span><Calendar size={13} /> Miembro desde {memberSince}</span>
+                </div>
+              </div>
+
+              <div>
+                <div className="profile-status-chip" title="Tu estado actual">
+                  <span className={`profile-status-dot ${statusObj.dotClass}`} />
+                  <span>{statusObj.label}</span>
+                </div>
+              </div>
             </div>
-            <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleAvatar} />
-            <div style={{ fontWeight: 600, fontSize: '1.125rem' }}>{user?.fullName}</div>
-            <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>{user?.email}</div>
-          </div>
 
-          {msg && <div style={{ padding: '0.5rem', borderRadius: 'var(--radius-sm)', background: msg.startsWith('✅') ? 'var(--accent-light)' : 'rgba(234,67,53,0.1)', fontSize: '0.8125rem', textAlign: 'center', marginBottom: '1rem' }}>{msg}</div>}
-
-          <div className="profile-form">
-            <div className="input-group"><label>Nombre completo</label><input className="input" value={form.fullName} onChange={e => setForm({ ...form, fullName: e.target.value })} /></div>
-            <div className="input-group"><label>Nombre de usuario</label><input className="input" value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} /></div>
-            <div className="input-group"><label>Estado personalizado</label><input className="input" value={form.customStatus} onChange={e => setForm({ ...form, customStatus: e.target.value })} placeholder="¿Qué estás haciendo?" /></div>
-            <div className="input-group">
-              <label>Estado</label>
-              <select className="input" value={status} onChange={e => setStatus(e.target.value)}>
-                {statuses.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-              </select>
+            <div className="profile-tabs">
+              <button className={`profile-tab ${tab === 'cuenta' ? 'active' : ''}`} onClick={() => setTab('cuenta')}>Cuenta</button>
+              <button className={`profile-tab ${tab === 'seguridad' ? 'active' : ''}`} onClick={() => setTab('seguridad')}>Seguridad</button>
             </div>
-            <button className="btn btn-primary w-full" onClick={handleSave} disabled={loading}><Save size={16} /> Guardar Cambios</button>
 
-            <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '0.5rem 0' }} />
-            <div style={{ fontSize: '0.875rem', fontWeight: 600 }}>Cambiar Contraseña</div>
-            <div className="input-group"><label>Contraseña actual</label><input className="input" type="password" value={passForm.currentPassword} onChange={e => setPassForm({ ...passForm, currentPassword: e.target.value })} /></div>
-            <div className="input-group"><label>Nueva contraseña</label><input className="input" type="password" value={passForm.newPassword} onChange={e => setPassForm({ ...passForm, newPassword: e.target.value })} /></div>
-            <button className="btn btn-secondary w-full" onClick={handlePassword}>Cambiar Contraseña</button>
+            {tab === 'cuenta' && (
+              <>
+                <div className="profile-field-grid">
+                  <div className="input-group">
+                    <label>Nombre completo</label>
+                    <input className="input" value={form.fullName} onChange={e => setForm({ ...form, fullName: e.target.value })} placeholder="Tu nombre y apellido" />
+                  </div>
+                  <div className="input-group">
+                    <label>Nombre de usuario</label>
+                    <input className="input" value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} placeholder="usuario" />
+                  </div>
+                  <div className="input-group full">
+                    <label>Mensaje de estado</label>
+                    <input className="input" value={form.customStatus} onChange={e => setForm({ ...form, customStatus: e.target.value })} placeholder="¿Qué estás haciendo?" />
+                  </div>
+                  <div className="input-group full">
+                    <label>Estado de disponibilidad</label>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      {STATUSES.map(s => (
+                        <button
+                          key={s.value}
+                          type="button"
+                          onClick={() => setStatus(s.value)}
+                          className={`profile-status-chip ${status === s.value ? 'active' : ''}`}
+                          style={status === s.value ? { borderColor: 'var(--accent)', background: 'var(--accent-light)', color: 'var(--accent)' } : {}}
+                        >
+                          <span className={`profile-status-dot ${s.dotClass}`} />
+                          <span>{s.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="profile-action-row">
+                  <button className="btn btn-secondary" onClick={() => navigate('/')} disabled={loading}>Cancelar</button>
+                  <button className="btn btn-primary" onClick={handleSave} disabled={loading}>
+                    {loading ? <span className="spinner spinner-sm" /> : <><Save size={16} /> Guardar cambios</>}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {tab === 'seguridad' && (
+              <>
+                <div className="profile-field-grid">
+                  <div className="input-group full">
+                    <label>Contraseña actual</label>
+                    <div className="input-icon-wrapper">
+                      <Lock size={18} className="input-icon" />
+                      <input className="input" type={showPass ? 'text' : 'password'} value={passForm.currentPassword} onChange={e => setPassForm({ ...passForm, currentPassword: e.target.value })} placeholder="Ingresá tu contraseña actual" />
+                      <button type="button" className="input-icon-right" onClick={() => setShowPass(!showPass)}>{showPass ? <EyeOff size={18} /> : <Eye size={18} />}</button>
+                    </div>
+                  </div>
+                  <div className="input-group">
+                    <label>Nueva contraseña</label>
+                    <div className="input-icon-wrapper">
+                      <Lock size={18} className="input-icon" />
+                      <input className="input" type={showPass ? 'text' : 'password'} value={passForm.newPassword} onChange={e => setPassForm({ ...passForm, newPassword: e.target.value })} placeholder="Mínimo 6 caracteres" />
+                    </div>
+                  </div>
+                  <div className="input-group">
+                    <label>Confirmar nueva contraseña</label>
+                    <div className="input-icon-wrapper">
+                      <Lock size={18} className="input-icon" />
+                      <input className="input" type={showPass ? 'text' : 'password'} value={passForm.confirmPassword} onChange={e => setPassForm({ ...passForm, confirmPassword: e.target.value })} placeholder="Repetí la nueva contraseña" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="profile-action-row">
+                  <button className="btn btn-primary" onClick={handlePassword} disabled={!passForm.currentPassword || !passForm.newPassword}>
+                    <ShieldCheck size={16} /> Cambiar contraseña
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

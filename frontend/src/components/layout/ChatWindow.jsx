@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
-import { ArrowLeft, Search, MoreVertical, Send, Paperclip, Smile, X, Reply, Pencil, Trash2, Forward, Check, CheckCheck, FileText, Download, Image as ImageIcon, Video, Music } from 'lucide-react';
+import { useToast } from '../../context/ToastContext';
+import { ArrowLeft, Search, MoreVertical, Send, Paperclip, Smile, X, Reply, Pencil, Trash2, Forward, Check, CheckCheck, FileText, Download, Image as ImageIcon, Video, Music, MessageCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import api, { API_URL } from '../../api/axios';
+import GroupInfoPanel from './GroupInfoPanel';
 
 const EMOJIS_BY_CAT = {
   '😀': ['😀','😁','😂','🤣','😃','😄','😅','😆','😉','😊','😋','😎','😍','🥰','😘','😗','😙','😚','🙂','🤗','🤔','😐','😑','😶','🙄','😏','😣','😥','😮','🤐','😯','😪','😫','😴','😌','😛','😜','😝','🤤','😒','😓','😔','😕','🙃','🤑','😲','🙁','😖','😞','😟','😤','😢','😭','😦','😧','😨','😩','🤯','😬','😰','😱'],
@@ -14,6 +16,7 @@ const EMOJIS_BY_CAT = {
 
 export default function ChatWindow({ conversation, onBack, onUpdate }) {
   const { user } = useAuth();
+  const toast = useToast();
   const { on, sendMessage: socketSend, sendTyping, sendStopTyping, markRead, isUserOnline, getTypingInConversation } = useSocket();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -112,7 +115,12 @@ export default function ChatWindow({ conversation, onBack, onUpdate }) {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('conversationId', conversation.id);
-    try { await api.post('/files/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }); } catch { /* ignore */ }
+    try {
+      await api.post('/files/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      toast.success('Archivo enviado', file.name);
+    } catch (err) {
+      toast.error('No se pudo enviar el archivo', err.response?.data?.error || 'Verificá tu conexión.');
+    }
     e.target.value = '';
   };
 
@@ -239,7 +247,21 @@ export default function ChatWindow({ conversation, onBack, onUpdate }) {
         {/* Messages */}
         <div className="messages-area">
           {hasMore && <button className="load-more-btn" onClick={() => fetchMessages(page + 1)}>Cargar mensajes anteriores</button>}
-          {loading ? <div className="flex justify-center items-center flex-1"><div className="spinner" /></div> : messages.map(renderMessage)}
+          {loading ? (
+            <div className="flex justify-center items-center flex-1"><div className="spinner" /></div>
+          ) : messages.length === 0 ? (
+            <div className="empty-state" style={{ margin: 'auto' }}>
+              <div className="empty-state-icon"><MessageCircle size={24} /></div>
+              <div className="empty-state-title">Sin mensajes todavía</div>
+              <div className="empty-state-sub">
+                {conversation.isGroup
+                  ? 'Sé el primero en romper el hielo en este grupo.'
+                  : 'Empezá la conversación con un saludo.'}
+              </div>
+            </div>
+          ) : (
+            messages.map(renderMessage)
+          )}
           {typingUsers.length > 0 && (
             <div className="typing-indicator"><div className="typing-dots"><span /><span /><span /></div><span>escribiendo...</span></div>
           )}
@@ -293,29 +315,11 @@ export default function ChatWindow({ conversation, onBack, onUpdate }) {
 
       {/* Group Info Panel */}
       {showInfo && conversation.isGroup && (
-        <div className="group-info-panel">
-          <div className="group-info-header">
-            <button className="btn-icon" onClick={() => setShowInfo(false)}><X size={20} /></button>
-            <span style={{ fontWeight: 600 }}>Info del grupo</span>
-          </div>
-          <div className="group-info-body">
-            <div className="group-info-avatar">
-              <div className="avatar avatar-xl"><span>{(conversation.name || '?')[0]}</span></div>
-              <div className="group-info-name">{conversation.name}</div>
-              {conversation.description && <div className="group-info-desc">{conversation.description}</div>}
-            </div>
-            <div className="group-members-title">{conversation.participants?.length || 0} participantes</div>
-            {conversation.participants?.map(p => (
-              <div key={p.id} className="group-member-item">
-                <div className="avatar avatar-sm">{p.user?.avatar ? <img src={`${API_URL}${p.user.avatar}`} alt="" /> : <span>{(p.user?.fullName || '?')[0]}</span>}<span className={`online-dot ${isUserOnline(p.user?.id) ? 'online' : 'offline'}`} /></div>
-                <div className="group-member-info">
-                  <div className="group-member-name">{p.user?.fullName || p.user?.username} {p.user?.id === user?.id ? '(Tú)' : ''}</div>
-                </div>
-                {p.role !== 'MEMBER' && <span className="group-member-role">{p.role}</span>}
-              </div>
-            ))}
-          </div>
-        </div>
+        <GroupInfoPanel
+          conversation={conversation}
+          messages={messages}
+          onClose={() => setShowInfo(false)}
+        />
       )}
       {lightbox && (
         <div className="lightbox-overlay" onClick={() => setLightbox(null)}>

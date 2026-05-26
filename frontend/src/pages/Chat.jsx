@@ -1,82 +1,70 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
+import { useToast } from '../context/ToastContext';
 import api from '../api/axios';
 import Sidebar from '../components/layout/Sidebar';
 import ChatWindow from '../components/layout/ChatWindow';
+import WhatsNewTip from '../components/WhatsNewTip';
+import { Lock, AlertTriangle, X } from 'lucide-react';
+import refsaLogo from '../assets/refsa-mark-transparent.png';
 import './Chat.css';
 
 export default function Chat() {
   const { user, resendVerification } = useAuth();
   const { on, joinConversation } = useSocket();
+  const toast = useToast();
   const [conversations, setConversations] = useState([]);
   const [activeConversation, setActiveConversation] = useState(null);
   const [showSidebar, setShowSidebar] = useState(true);
   const [loadingConvos, setLoadingConvos] = useState(true);
   const [resending, setResending] = useState(false);
-  const [resendStatus, setResendStatus] = useState({ type: '', message: '' });
+  const [bannerDismissed, setBannerDismissed] = useState(false);
 
-  // Refs de estado para evitar cierres obsoletos en listeners de sockets
   const conversationsRef = useRef(conversations);
   const activeConversationRef = useRef(activeConversation);
 
   useEffect(() => { conversationsRef.current = conversations; }, [conversations]);
   useEffect(() => { activeConversationRef.current = activeConversation; }, [activeConversation]);
 
-  // Actualizador dinámico del título del navegador (Tab flashing / unread indicator)
+  // Título del navegador con contador de no leídos
   useEffect(() => {
     const totalUnread = conversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
-    if (totalUnread > 0) {
-      document.title = `(${totalUnread}) Chat REFSA`;
-    } else {
-      document.title = 'Chat REFSA';
-    }
+    document.title = totalUnread > 0 ? `(${totalUnread}) Chat REFSA` : 'Chat REFSA';
   }, [conversations]);
 
-  // Solicitar permiso de notificaciones de escritorio en el cargado inicial
+  // Permiso de notificaciones de escritorio
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
   }, []);
 
-  // Función generadora de audio de notificación sutil estilo "WhatsApp ping" con Web Audio API
   const playNotificationChime = () => {
     try {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (!AudioCtx) return;
       const ctx = new AudioCtx();
-      
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(659.25, ctx.currentTime); // E5
-      osc.frequency.exponentialRampToValueAtTime(880.00, ctx.currentTime + 0.08); // A5
-      
+      osc.frequency.setValueAtTime(659.25, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880.00, ctx.currentTime + 0.08);
       gain.gain.setValueAtTime(0.08, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
-      
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      
-      osc.start();
-      osc.stop(ctx.currentTime + 0.22);
-    } catch (err) {
-      console.warn('AudioContext bloqueado/no soportado:', err);
-    }
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(); osc.stop(ctx.currentTime + 0.22);
+    } catch (err) { /* ignore */ }
   };
 
   const handleResendVerification = async () => {
     if (!user?.email) return;
     setResending(true);
-    setResendStatus({ type: '', message: '' });
     try {
       await resendVerification(user.email);
-      setResendStatus({ type: 'success', message: '¡Correo reenviado!' });
-      setTimeout(() => setResendStatus({ type: '', message: '' }), 5000);
+      toast.success('Correo reenviado', 'Revisá tu bandeja de entrada para verificar tu cuenta.');
     } catch (err) {
-      setResendStatus({ type: 'error', message: err.response?.data?.error || 'Error al reenviar.' });
+      toast.error('No se pudo reenviar', err.response?.data?.error || 'Intentá de nuevo más tarde.');
     } finally {
       setResending(false);
     }
@@ -95,31 +83,30 @@ export default function Chat() {
   useEffect(() => {
     if (!on) return;
     const unsub1 = on('new_message', (message) => {
-      // Reproducir sonido e iniciar notificación si es un mensaje recibido de otra persona
       if (message.senderId !== user?.id) {
         playNotificationChime();
-
         const isCurrentChat = activeConversationRef.current?.id === message.conversationId;
         const isTabHidden = document.hidden;
 
         if ((isTabHidden || !isCurrentChat) && 'Notification' in window && Notification.permission === 'granted') {
           const senderName = message.sender?.fullName || message.sender?.username || 'Mensaje Nuevo';
           const textPreview = message.content || '📎 Archivo enviado';
-          
           const notification = new Notification(senderName, {
             body: textPreview,
-            icon: '/favicon.ico',
+            icon: '/favicon.png',
             tag: message.conversationId,
-            requireInteraction: false
+            requireInteraction: false,
           });
-          
           notification.onclick = () => {
             window.focus();
             const targetConv = conversationsRef.current.find(c => c.id === message.conversationId);
-            if (targetConv) {
-              handleSelectConversation(targetConv);
-            }
+            if (targetConv) handleSelectConversation(targetConv);
           };
+        } else if (!isCurrentChat) {
+          // Toast in-app cuando la pestaña está visible pero no es la conversación activa
+          const senderName = message.sender?.fullName || message.sender?.username || 'Mensaje nuevo';
+          const textPreview = message.content || '📎 Archivo';
+          toast.info(senderName, textPreview);
         }
       }
 
@@ -141,6 +128,7 @@ export default function Chat() {
       }
     });
     return () => { unsub1?.(); unsub2?.(); unsub3?.(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [on, user, fetchConversations]);
 
   const handleSelectConversation = (conv) => {
@@ -163,68 +151,21 @@ export default function Chat() {
 
   return (
     <div className="chat-page">
-      {user && !user.isVerified && (
-        <div style={{
-          background: 'rgba(245, 158, 11, 0.1)',
-          borderBottom: '1px solid rgba(245, 158, 11, 0.2)',
-          color: '#f59e0b',
-          padding: '0.625rem 1rem',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: '1rem',
-          fontSize: '0.8125rem',
-          backdropFilter: 'blur(10px)',
-          zIndex: 10
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span>⚠️</span>
+      {user && !user.isVerified && !bannerDismissed && (
+        <div className="verify-banner" role="alert">
+          <div className="verify-banner-left">
+            <span className="verify-banner-icon"><AlertTriangle size={14} /></span>
             <span>
-              Tu cuenta de correo no está verificada. Por favor, verifica tu cuenta para habilitar todas las funcionalidades de seguridad.
-              {resendStatus.message && (
-                <strong style={{
-                  marginLeft: '1rem',
-                  color: resendStatus.type === 'success' ? '#25d366' : '#ef4444'
-                }}>
-                  {resendStatus.message}
-                </strong>
-              )}
+              <strong style={{ color: 'var(--brand-orange-deep)' }}>Cuenta sin verificar.</strong>{' '}
+              Verificá tu correo para habilitar todas las funciones de seguridad.
             </span>
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <button
-              onClick={handleResendVerification}
-              disabled={resending}
-              style={{
-                fontSize: '0.75rem',
-                padding: '0.25rem 0.75rem',
-                height: 'auto',
-                color: '#f59e0b',
-                background: 'transparent',
-                border: '1px solid rgba(245, 158, 11, 0.3)',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontWeight: '500'
-              }}
-            >
-              {resending ? 'Enviando...' : 'Reenviar Email'}
+          <div className="verify-banner-actions">
+            <button className="btn btn-secondary" onClick={handleResendVerification} disabled={resending}>
+              {resending ? 'Enviando…' : 'Reenviar correo'}
             </button>
-            <a
-              href="/verify-email"
-              style={{
-                fontSize: '0.75rem',
-                padding: '0.25rem 0.75rem',
-                height: 'auto',
-                background: '#f59e0b',
-                color: '#111b21',
-                textDecoration: 'none',
-                borderRadius: '4px',
-                fontWeight: '600',
-                display: 'inline-block'
-              }}
-            >
-              Verificar Ahora
-            </a>
+            <a href="/verify-email" className="btn btn-warning">Verificar ahora</a>
+            <button className="btn-icon" style={{ width: 30, height: 30 }} onClick={() => setBannerDismissed(true)} aria-label="Cerrar"><X size={14} /></button>
           </div>
         </div>
       )}
@@ -244,14 +185,20 @@ export default function Chat() {
           ) : (
             <div className="chat-empty">
               <div className="chat-empty-content">
-                <div className="chat-empty-icon">💬</div>
+                <div className="chat-empty-logo"><img src={refsaLogo} alt="REFSA" /></div>
                 <h2>Chat REFSA</h2>
-                <p>Selecciona una conversación o inicia una nueva</p>
+                <p>Seleccioná una conversación del panel izquierdo o iniciá una nueva para comenzar a chatear con tu equipo.</p>
+                <div className="chat-empty-footer">
+                  <Lock size={12} />
+                  <span>Comunicación interna segura</span>
+                </div>
               </div>
             </div>
           )}
         </div>
       </div>
+
+      <WhatsNewTip />
     </div>
   );
 }

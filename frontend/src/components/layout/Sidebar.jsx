@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
 import { useTheme } from '../../context/ThemeContext';
-import { Search, Plus, Users, Settings, LogOut, Moon, Sun, Shield, User } from 'lucide-react';
+import { useToast } from '../../context/ToastContext';
+import { Search, Plus, Users, Settings, LogOut, Moon, Sun, Shield, User, Rows3 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import api, { API_URL } from '../../api/axios';
@@ -11,7 +12,8 @@ import api, { API_URL } from '../../api/axios';
 export default function Sidebar({ conversations, activeConversation, onSelect, onNewConversation, loading }) {
   const { user, logout } = useAuth();
   const { isUserOnline } = useSocket();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, density, cycleDensity } = useTheme();
+  const toast = useToast();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [showNewChat, setShowNewChat] = useState(false);
@@ -54,7 +56,10 @@ export default function Sidebar({ conversations, activeConversation, onSelect, o
       onNewConversation(data.group);
       setShowNewGroup(false);
       setGroupName(''); setGroupDesc(''); setSelectedMembers([]);
-    } catch { /* ignore */ }
+      toast.success('Grupo creado', `"${data.group.name}" está listo para usarse.`);
+    } catch (err) {
+      toast.error('No se pudo crear el grupo', err.response?.data?.error || 'Verificá los datos.');
+    }
   };
 
   const getConversationInfo = (conv) => {
@@ -88,6 +93,7 @@ export default function Sidebar({ conversations, activeConversation, onSelect, o
           </div>
         </div>
         <div className="sidebar-header-right">
+          <button className="btn-icon" onClick={cycleDensity} title={`Densidad: ${density}`} aria-label="Cambiar densidad"><Rows3 size={18} /></button>
           <button className="btn-icon" onClick={toggleTheme} title="Cambiar tema">{theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}</button>
           <button className="btn-icon" onClick={() => setShowMenu(!showMenu)} title="Menú"><Plus size={20} /></button>
           {showMenu && (
@@ -103,6 +109,11 @@ export default function Sidebar({ conversations, activeConversation, onSelect, o
         </div>
       </div>
 
+      <div className="sidebar-brand-strip">
+        <span><span className="brand-name">REFSA</span> · Chat Interno</span>
+        <span>{conversations.length} chats</span>
+      </div>
+
       <div className="search-box">
         <Search size={16} className="search-icon" />
         <input placeholder="Buscar conversación..." value={search} onChange={e => setSearch(e.target.value)} />
@@ -111,8 +122,22 @@ export default function Sidebar({ conversations, activeConversation, onSelect, o
       <div className="conversation-list">
         {loading ? (
           <div className="flex justify-center items-center" style={{ padding: '2rem' }}><div className="spinner" /></div>
+        ) : filtered.length === 0 && search ? (
+          <div className="empty-state" style={{ minHeight: '180px' }}>
+            <div className="empty-state-icon"><Search size={22} /></div>
+            <div className="empty-state-title">Sin resultados</div>
+            <div className="empty-state-sub">No encontramos conversaciones que coincidan con "<strong>{search}</strong>".</div>
+            <button className="btn btn-secondary" onClick={() => setSearch('')} style={{ fontSize: '0.75rem', height: 32 }}>Limpiar búsqueda</button>
+          </div>
         ) : filtered.length === 0 ? (
-          <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.875rem' }}>No hay conversaciones</div>
+          <div className="empty-state" style={{ minHeight: '220px' }}>
+            <div className="empty-state-icon"><Plus size={22} /></div>
+            <div className="empty-state-title">Aún no tenés conversaciones</div>
+            <div className="empty-state-sub">Iniciá un chat 1 a 1 o creá un grupo para tu equipo.</div>
+            <button className="btn btn-primary" onClick={openNewChat} style={{ fontSize: '0.8125rem' }}>
+              <Plus size={14} /> Iniciar conversación
+            </button>
+          </div>
         ) : filtered.map(conv => {
           const info = getConversationInfo(conv);
           const lastMsg = conv.lastMessage || conv.messages?.[0];
