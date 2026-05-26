@@ -4,7 +4,7 @@ import { useSocket } from '../../context/SocketContext';
 import { useToast } from '../../context/ToastContext';
 import { ArrowLeft, Search, MoreVertical, Send, Paperclip, Smile, Grid3x3, X, Reply, Pencil, Trash2, Forward, Check, CheckCheck, FileText, Download, Image as ImageIcon, Video, Music, MessageCircle } from 'lucide-react';
 import { format } from 'date-fns';
-import api from '../../api/axios';
+import api, { API_URL } from '../../api/axios';
 import GroupInfoPanel from './GroupInfoPanel';
 import StickerPicker from './StickerPicker';
 
