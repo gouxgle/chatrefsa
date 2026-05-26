@@ -26,50 +26,6 @@ async function main() {
   console.log('✅ Admin user created:', admin.email);
 
 
-  // Create department channels
-  const departments = [
-    { name: '🏢 General', description: 'Canal general de la empresa' },
-    { name: '💰 Ventas', description: 'Equipo de ventas' },
-    { name: '📊 Administración', description: 'Departamento administrativo' },
-    { name: '🛠️ Soporte', description: 'Soporte técnico' },
-    { name: '👥 Recursos Humanos', description: 'Gestión de personal' },
-  ];
-
-  for (const dept of departments) {
-    const existing = await prisma.conversation.findFirst({
-      where: { name: dept.name, isGroup: true },
-    });
-    if (existing) {
-      console.log('⏭️  Channel already exists:', dept.name);
-      continue;
-    }
-
-    const conversation = await prisma.conversation.create({
-      data: {
-        isGroup: true,
-        name: dept.name,
-        description: dept.description,
-        createdById: admin.id,
-      },
-    });
-
-    await prisma.conversationParticipant.create({
-      data: { userId: admin.id, conversationId: conversation.id, role: 'ADMIN' },
-    });
-
-    if (dept.name === '🏢 General') {
-      const allUsers = await prisma.user.findMany();
-      for (const user of allUsers) {
-        if (user.id !== admin.id) {
-          await prisma.conversationParticipant.create({
-            data: { userId: user.id, conversationId: conversation.id, role: 'MEMBER' },
-          });
-        }
-      }
-    }
-
-    console.log('✅ Channel created:', dept.name);
-  }
 
   // Create system configs
   const configs = [
