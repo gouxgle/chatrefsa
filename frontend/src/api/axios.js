@@ -1,14 +1,11 @@
 import axios from 'axios';
 
-let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
-// Fallback dinámico si accedemos desde otra PC de la red local
-if (API_URL.includes('localhost') && !window.location.hostname.includes('localhost') && window.location.hostname !== '127.0.0.1') {
-  API_URL = `${window.location.protocol}//${window.location.hostname}:5000`;
-}
+// URL relativa — nginx del contenedor proxea /api → backend:5000
+// Funciona en LAN, dominio con proxy inverso, y localhost sin cambios.
+const API_URL = '';
 
 const api = axios.create({
-  baseURL: `${API_URL}/api`,
+  baseURL: '/api',
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -26,7 +23,7 @@ api.interceptors.response.use(
       original._retry = true;
       try {
         const refreshToken = localStorage.getItem('refreshToken');
-        const { data } = await axios.post(`${API_URL}/api/auth/refresh`, { refreshToken });
+        const { data } = await axios.post('/api/auth/refresh', { refreshToken });
         localStorage.setItem('accessToken', data.accessToken);
         localStorage.setItem('refreshToken', data.refreshToken);
         original.headers.Authorization = `Bearer ${data.accessToken}`;

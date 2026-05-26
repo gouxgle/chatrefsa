@@ -3,12 +3,8 @@ import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
 
 const SocketContext = createContext();
-let WS_URL = import.meta.env.VITE_WS_URL || 'http://localhost:5000';
-
-// Fallback dinámico si accedemos desde otra PC de la red local
-if (WS_URL.includes('localhost') && !window.location.hostname.includes('localhost') && window.location.hostname !== '127.0.0.1') {
-  WS_URL = `${window.location.protocol === 'https:' ? 'https:' : 'http:'}//${window.location.hostname}:5000`;
-}
+// Conexión al mismo origen — nginx proxea /socket.io → backend:5000
+const WS_URL = window.location.origin;
 
 export function SocketProvider({ children }) {
   const { user } = useAuth();
