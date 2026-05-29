@@ -37,6 +37,7 @@ model User {
   messageReads     MessageRead[]
   uploadedFiles    File[]
   systemLogs       SystemLog[]
+  pushSubscriptions PushSubscription[]
   createdConversations Conversation[] @relation("CreatedConversations")
 
   @@map("users")
@@ -187,4 +188,19 @@ model SystemConfig {
   value String @db.Text
 
   @@map("system_config")
+}
+
+// ─── Push Subscriptions ────────────────────────────
+model PushSubscription {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  endpoint     String   @db.Text
+  p256dh       String   @db.Text
+  auth         String   @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }

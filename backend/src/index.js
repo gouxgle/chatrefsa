@@ -20,6 +20,7 @@ const groupRoutes = require('./routes/group.routes');
 const fileRoutes = require('./routes/file.routes');
 const adminRoutes = require('./routes/admin.routes');
 const stickerRoutes = require('./routes/sticker.routes');
+const { router: pushRoutes } = require('./routes/push.routes');
 
 const app = express();
 const server = http.createServer(app);
@@ -98,6 +99,7 @@ app.use('/api/groups', groupRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/stickers', stickerRoutes);
+app.use('/api/push', pushRoutes);
 
 // Error handler
 app.use((err, req, res, next) => {

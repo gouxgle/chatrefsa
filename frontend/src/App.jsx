@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
+import { usePushNotifications } from './hooks/usePushNotifications';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
@@ -11,6 +12,11 @@ import VerifyEmail from './pages/VerifyEmail';
 import Chat from './pages/Chat';
 import Profile from './pages/Profile';
 import AdminDashboard from './pages/admin/Dashboard';
+
+function PushSetup() {
+  usePushNotifications();
+  return null;
+}
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -56,6 +62,7 @@ export default function App() {
       <ThemeProvider>
         <ToastProvider>
           <AuthProvider>
+            <PushSetup />
             <AppRoutes />
           </AuthProvider>
         </ToastProvider>

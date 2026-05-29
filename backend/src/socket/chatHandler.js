@@ -1,5 +1,6 @@
 const prisma = require('../config/database');
 const { sanitize } = require('../utils/helpers');
+const { notifyUser } = require('../lib/pushNotify');
 
 const isParticipant = async (userId, conversationId) => {
   const p = await prisma.conversationParticipant.findFirst({
@@ -64,6 +65,32 @@ module.exports = (io, socket) => {
       });
 
       io.to(conversationId).emit('new_message', message);
+
+      // Push notification a participantes que no están conectados
+      try {
+        const participants = await prisma.conversationParticipant.findMany({
+          where: { conversationId, userId: { not: userId } },
+          select: { userId: true },
+        });
+        const senderName = message.sender.fullName || message.sender.username;
+        const preview = type === 'STICKER' ? '🖼️ Sticker'
+          : type === 'FILE' ? '📎 Archivo'
+          : (safeContent || '').slice(0, 80);
+
+        for (const p of participants) {
+          const sockets = await io.in(`user_${p.userId}`).fetchSockets();
+          if (sockets.length === 0) {
+            // Usuario offline → push
+            await notifyUser(p.userId, {
+              title: senderName,
+              body: preview,
+              conversationId,
+              url: `/chat/${conversationId}`,
+            });
+          }
+        }
+      } catch (_) { /* no romper flujo principal */ }
+
     } catch (error) {
       socket.emit('error', { message: 'Error al enviar mensaje' });
     }
