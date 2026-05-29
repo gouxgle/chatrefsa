@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
-const { prisma } = require('../lib/prisma');
+const prisma = require('../config/database');
 const webpush = require('web-push');
 
 webpush.setVapidDetails(

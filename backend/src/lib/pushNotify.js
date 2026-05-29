@@ -1,5 +1,5 @@
 const webpush = require('web-push');
-const { prisma } = require('./prisma');
+const prisma = require('../config/database');
 
 webpush.setVapidDetails(
   process.env.VAPID_EMAIL,
