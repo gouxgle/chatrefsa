@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken } = require('../middleware/auth');
+const { authMiddleware } = require('../middleware/auth');
 const prisma = require('../config/database');
 const webpush = require('web-push');
 
@@ -16,7 +16,7 @@ router.get('/vapid-public-key', (req, res) => {
 });
 
 // POST /push/subscribe
-router.post('/subscribe', authenticateToken, async (req, res) => {
+router.post('/subscribe', authMiddleware, async (req, res) => {
   const { endpoint, keys } = req.body;
   if (!endpoint || !keys?.p256dh || !keys?.auth) {
     return res.status(400).json({ error: 'Suscripción inválida' });
@@ -52,7 +52,7 @@ router.post('/subscribe', authenticateToken, async (req, res) => {
 });
 
 // DELETE /push/unsubscribe
-router.delete('/unsubscribe', authenticateToken, async (req, res) => {
+router.delete('/unsubscribe', authMiddleware, async (req, res) => {
   const { endpoint } = req.body;
   try {
     await prisma.pushSubscription.deleteMany({
