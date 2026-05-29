@@ -1,12 +1,12 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
 import { useToast } from '../../context/ToastContext';
 import {
   X, Users, Image as ImageIcon, Settings, FileText, Video as VideoIcon,
-  Music as MusicIcon, BellOff, Bell, LogOut, Trash2, Inbox
+  Music as MusicIcon, BellOff, Bell, LogOut, Trash2, Inbox, Camera
 } from 'lucide-react';
-import api from '../../api/axios';
+import api, { API_URL } from '../../api/axios';
 
 /**
  * Panel lateral derecho con info del grupo, en tabs:
@@ -27,6 +27,28 @@ export default function GroupInfoPanel({ conversation, messages = [], onClose, o
   const [muted, setMuted] = useState(false);
   const [openInvite, setOpenInvite] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(conversation.avatar || null);
+  const avatarInputRef = useRef(null);
+
+  const isAdminMember = conversation.participants?.some(
+    p => p.userId === user?.id && p.role === 'ADMIN'
+  ) || user?.role === 'ADMIN';
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const form = new FormData();
+    form.append('avatar', file);
+    try {
+      const { data } = await api.put(`/groups/${conversation.id}/avatar`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setAvatarUrl(data.avatar);
+      toast.success('Avatar actualizado');
+    } catch {
+      toast.error('Error al subir imagen');
+    }
+  };
 
   const members = conversation.participants || [];
 
@@ -80,8 +102,25 @@ export default function GroupInfoPanel({ conversation, messages = [], onClose, o
       <div className="group-info-body" style={{ padding: 0 }}>
         <div style={{ padding: '1rem 1rem 0.5rem' }}>
           <div className="group-info-avatar">
-            <div className="avatar avatar-xl" style={{ background: 'linear-gradient(135deg, var(--accent), var(--brand-blue-bright))', color: 'white', fontWeight: 700 }}>
-              <span>{initial}</span>
+            <div style={{ position: 'relative', display: 'inline-block' }}>
+              <div className="avatar avatar-xl" style={!avatarUrl ? { background: 'linear-gradient(135deg, var(--accent), var(--brand-blue-bright))', color: 'white', fontWeight: 700 } : {}}>
+                {avatarUrl
+                  ? <img src={`${API_URL}${avatarUrl}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                  : <span>{initial}</span>
+                }
+              </div>
+              {isAdminMember && (
+                <>
+                  <button
+                    onClick={() => avatarInputRef.current?.click()}
+                    style={{ position: 'absolute', bottom: 0, right: 0, background: 'var(--accent)', border: 'none', borderRadius: '50%', width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white' }}
+                    title="Cambiar ícono del grupo"
+                  >
+                    <Camera size={14} />
+                  </button>
+                  <input ref={avatarInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
+                </>
+              )}
             </div>
             <div className="group-info-name">{conversation.name}</div>
             {conversation.description && <div className="group-info-desc">{conversation.description}</div>}

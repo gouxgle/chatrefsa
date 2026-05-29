@@ -119,4 +119,34 @@ const deleteGroup = async (req, res) => {
   }
 };
 
-module.exports = { createGroup, updateGroup, addMember, removeMember, updateMemberRole, deleteGroup };
+const updateAvatar = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!req.file) return res.status(400).json({ error: 'No se recibió imagen' });
+
+    const prisma = require('../config/database');
+    const group = await prisma.conversation.findUnique({ where: { id }, select: { createdById: true, isGroup: true } });
+    if (!group?.isGroup) return res.status(404).json({ error: 'Grupo no encontrado' });
+
+    const isAdmin = req.user.role === 'ADMIN';
+    const isMember = await prisma.conversationParticipant.findFirst({
+      where: { conversationId: id, userId: req.user.id, role: 'ADMIN' },
+    });
+    if (!isAdmin && !isMember) return res.status(403).json({ error: 'Sin permiso' });
+
+    const avatarPath = `/uploads/avatars/${req.file.filename}`;
+    const updated = await prisma.conversation.update({
+      where: { id },
+      data: { avatar: avatarPath },
+    });
+
+    const io = req.app.get('io');
+    if (io) io.to(id).emit('group_updated', updated);
+
+    res.json({ avatar: avatarPath });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al actualizar avatar' });
+  }
+};
+
+module.exports = { createGroup, updateGroup, updateAvatar, addMember, removeMember, updateMemberRole, deleteGroup };
